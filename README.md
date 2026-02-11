@@ -12,8 +12,6 @@ A locally-running AI agent that autonomously controls a virtual desktop inside a
 [Screencast from 11-02-2026 13_58_00.webm](https://github.com/user-attachments/assets/27fa7a7a-f725-428d-a3dc-75ba41ec79de)
 
 
-> **↑ Replace the link above with your demo video after uploading it to `assets/`.**
-
 ## 🎯 What Is This?
 
 Most "computer use" demos rely on cloud-hosted models (GPT-4V, Claude, etc.). This project runs the **entire pipeline locally**:
