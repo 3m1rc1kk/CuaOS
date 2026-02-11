@@ -1,0 +1,26 @@
+# ── Core Runtime ──
+PyQt6>=6.6
+requests>=2.31
+Pillow>=10.0
+numpy>=1.24
+
+# ── LLM / Hugging Face ──
+huggingface_hub>=0.20
+transformers>=4.40
+sentencepiece>=0.1.99
+
+# ── Vision ──
+opencv-python>=4.8
+
+# ── PyTorch (CUDA 13.0 — RTX 40 series and above) ──
+# The line below installs PyTorch with CUDA 13.0 support.
+# For different CUDA versions or CPU-only, see:
+#   https://pytorch.org/get-started/locally/
+# --extra-index-url https://download.pytorch.org/whl/cu130
+# torch>=2.10
+# torchvision>=0.25
+
+# ── llama-cpp-python (NVIDIA GPU) ──
+# This package is NOT installed via pip. Use a prebuilt .whl from:
+#   https://github.com/JamePeng/llama-cpp-python/releases
+# See README.md for detailed installation instructions.
