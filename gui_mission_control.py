@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CUA Mission Control — Main Window
-Professional mission control interface connected to Docker sandbox.
+Professional task control interface connected to a Docker sandbox.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from src.panels import TopBar, CommandPanel, InspectorPanel, LogPanel
 
 
 # ═══════════════════════════════════════════
-# Agent core (obtained from gui_main.py)
+# Agent core (taken from gui_main.py)
 # ═══════════════════════════════════════════
 
 def trim_history(history: List[Dict[str, Any]], keep_last: int = 6) -> List[Dict[str, Any]]:
@@ -80,7 +80,7 @@ def pil_to_qpixmap(pil_img) -> QPixmap:
 # ═══════════════════════════════════════════
 
 class VMView(QLabel):
-    """It draws a letterbox (fit) on the VM screen and transmits the mouse/keyboard input to the VM."""
+    """Renders the VM screen with letterbox (fit) scaling and forwards mouse/keyboard input to the VM."""
 
     def __init__(self, sandbox: Sandbox, parent=None):
         super().__init__(parent)
@@ -238,7 +238,7 @@ def run_single_command(
                 if ok:
                     out["x"], out["y"] = x, y
                     break
-                signals.log.emit(f"[WARNING] Invalid coordinates ({reason}), is being tried again.", "warn")
+                signals.log.emit(f"[WARN] Invalid coordinates ({reason}), retrying.", "warn")
                 history.append({"action": "INVALID_COORDS", "raw": out})
                 out = None
                 continue
@@ -264,7 +264,7 @@ def run_single_command(
 
         stop, why = should_stop_on_repeat(history, out)
         if stop:
-            signals.log.emit(f"[DURDURULDU] {why}", "warn")
+            signals.log.emit(f"[STOPPED] {why}", "warn")
             return "DONE(repeat-guard)"
 
         if action in ("CLICK", "DOUBLE_CLICK", "RIGHT_CLICK"):
@@ -335,7 +335,7 @@ class MissionControlWindow(QMainWindow):
         center_layout.setContentsMargins(4, 4, 4, 4)
 
         # VMView placeholder (populated after sandbox init)
-        self.vm_view_placeholder = QLabel("Establishing a connection to the sandbox…")
+        self.vm_view_placeholder = QLabel("Connecting to sandbox…")
         self.vm_view_placeholder.setObjectName("vmView")
         self.vm_view_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.vm_view_placeholder.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -378,28 +378,28 @@ class MissionControlWindow(QMainWindow):
     def _init_backend(self) -> None:
         # Sandbox
         try:
-            self.signals.log.emit("Starting a Docker container…", "info")
+            self.signals.log.emit("Starting Docker container…", "info")
             self.sandbox = Sandbox(cfg)
             self.sandbox.start()
-            self.signals.log.emit("Docker sandbox connection established ✓", "success")
+            self.signals.log.emit("Docker sandbox connected ✓", "success")
             QTimer.singleShot(0, self._setup_vm_view)
             QTimer.singleShot(0, lambda: self.top_bar.set_docker_status(True))
             QTimer.singleShot(0, lambda: self.inspector.set_vm_info(
                 cfg.SANDBOX_NAME, cfg.VNC_RESOLUTION,
                 f"http://127.0.0.1:{cfg.API_PORT}"))
         except Exception as e:
-            self.signals.log.emit(f"Docker Error: {e}", "error")
+            self.signals.log.emit(f"Docker ERROR: {e}", "error")
             QTimer.singleShot(0, lambda: self.top_bar.set_docker_status(False))
 
         # LLM
         try:
             QTimer.singleShot(0, lambda: self.top_bar.set_model_status("loading"))
-            self.signals.log.emit("Model loading  (Qwen3)…", "info")
+            self.signals.log.emit("Loading model (Qwen3)…", "info")
             self.llm = load_llm()
-            self.signals.log.emit("Model is ready  ✓", "success")
+            self.signals.log.emit("Model ready ✓", "success")
             QTimer.singleShot(0, lambda: self.top_bar.set_model_status("ready"))
         except Exception as e:
-            self.signals.log.emit(f"Model Error: {e}", "error")
+            self.signals.log.emit(f"Model ERROR: {e}", "error")
             QTimer.singleShot(0, lambda: self.top_bar.set_model_status("error"))
 
         QTimer.singleShot(0, lambda: self.inspector.set_config(cfg))
@@ -438,16 +438,16 @@ class MissionControlWindow(QMainWindow):
     # --- Agent execution ---
     def _on_run(self, objective: str) -> None:
         if not objective:
-            self.log_panel.append("The command cannot be empty. ", "warn")
+            self.log_panel.append("Command cannot be empty.", "warn")
             return
         if self.worker_thread and self.worker_thread.is_alive():
-            self.log_panel.append("A command is already running. ", "warn")
+            self.log_panel.append("A command is already running.", "warn")
             return
         if not self.llm:
-            self.log_panel.append("The model hasn't been uploaded yet! ", "error")
+            self.log_panel.append("Model not loaded yet!", "error")
             return
         if not self.sandbox:
-            self.log_panel.append("No connection to Sandbox! ", "error")
+            self.log_panel.append("No sandbox connection!", "error")
             return
 
         # Optional translation
@@ -459,7 +459,7 @@ class MissionControlWindow(QMainWindow):
             out = _tm.generate(**_tn(objective, return_tensors="pt", padding=True))
             translated = _tn.decode(out[0], skip_special_tokens=True)
             if translated != objective:
-                self.log_panel.append(f"Çeviri: {objective} → {translated}", "info")
+                self.log_panel.append(f"Translation: {objective} → {translated}", "info")
         except Exception:
             pass  # translation not available, use raw text
 
@@ -470,7 +470,7 @@ class MissionControlWindow(QMainWindow):
         self.cmd_panel.clear_steps()
         self.stop_event = threading.Event()
         self.signals.busy.emit(True)
-        self.log_panel.append(f"Komut başladı: {translated}", "info")
+        self.log_panel.append(f"Command started: {translated}", "info")
 
         def worker():
             try:
@@ -479,7 +479,7 @@ class MissionControlWindow(QMainWindow):
                     self.signals, self.stop_event)
                 self.signals.finished.emit(f"Result: {res}")
             except Exception:
-                self.signals.log.emit("Error:\n" + traceback.format_exc(), "error")
+                self.signals.log.emit("ERROR:\n" + traceback.format_exc(), "error")
             finally:
                 self.signals.busy.emit(False)
 
