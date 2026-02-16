@@ -56,10 +56,10 @@ def _docker_env(name: str) -> Dict[str, str]:
 
 def _parse_sse_or_json(text: str) -> Any:
     """
-    /cmd endpoint'i bazen JSON, bazen text/event-stream (SSE) döndürüyor.
+    The /cmd endpoint sometimes returns JSON, sometimes text/event-stream (SSE).
     - JSON: {"success": true, ...}
-    - SSE: data: {...}\n\n (birden fazla event olabilir)
-    En sondaki JSON objesini döndürür.
+    - SSE: data: {...}\n\n (may contain multiple events)
+    Returns the last JSON object found.
     """
     text = (text or "").strip()
     if not text:
@@ -85,7 +85,7 @@ def _parse_sse_or_json(text: str) -> Any:
     if last_obj is not None:
         return last_obj
 
-    # Fallback: herhangi bir JSON substring yakala
+    # Fallback: try to extract any JSON substring
     l = text.find("{")
     r = text.rfind("}")
     if l != -1 and r != -1 and r > l:
@@ -96,13 +96,13 @@ def _parse_sse_or_json(text: str) -> Any:
 
 class Sandbox:
     """
-    trycua/cua-xfce container'ı için minimal "computer-server" REST wrapper.
+    Minimal "computer-server" REST wrapper for the trycua/cua-xfce container.
     Host -> container port map:
       - API (container:8000)  -> host:API_PORT
       - VNC (container:5901)  -> host:VNC_PORT
       - noVNC (container:6901)-> host:NOVNC_PORT
 
-    CUA dokümanında bu erişim noktaları "Common Access Points" olarak geçer. :contentReference[oaicite:2]{index=2}
+    These access points are documented as "Common Access Points" in the CUA docs.
     """
 
     def __init__(self, cfg):
@@ -144,8 +144,8 @@ class Sandbox:
     # -----------------------
     def start(self) -> None:
         """
-        - Eğer container zaten çalışıyorsa: sadece API ready bekler.
-        - Çalışmıyorsa: docker run ile başlatır ve API ready bekler.
+        - If the container is already running: just wait for API readiness.
+        - If not running: start it with docker run and wait for API readiness.
         """
         if _docker_running(self.container_name):
             env = _docker_env(self.container_name)
@@ -159,7 +159,7 @@ class Sandbox:
                 self._wait_api_ready(timeout=self.api_ready_timeout)
                 return
 
-        # Aynı isimde ama stopped container varsa sil (port mapping değişmiş olabilir)
+        # Remove stopped container with the same name if it exists (port mapping may have changed)
         if _docker_exists(self.container_name) and not _docker_running(self.container_name):
             subprocess.run(["docker", "rm", "-f", self.container_name], check=False)
 
@@ -183,7 +183,7 @@ class Sandbox:
 
     def launch_vnc_viewer(self) -> None:
         """
-        TigerVNC varsa pencere olarak açar; yoksa noVNC URL yazdırır.
+        Opens TigerVNC viewer if available; otherwise prints noVNC URL.
         """
         try:
             subprocess.Popen(["vncviewer", f"127.0.0.1:{self.host_vnc_port}"])
@@ -197,10 +197,10 @@ class Sandbox:
     # -----------------------
     def _wait_api_ready(self, timeout: float) -> None:
         """
-        Bazı image versiyonlarında /status mevcut olabilir, bazılarında olmayabilir.
-        Bu yüzden:
-          1) GET /status dene (varsa)
-          2) olmazsa POST /cmd get_screen_size dene
+        Some image versions have /status, some don't.
+        Strategy:
+          1) Try GET /status (if available)
+          2) Otherwise try POST /cmd get_screen_size
         """
         print(f"[SANDBOX] Waiting up to {int(timeout)}s for API to become ready at {self.cmd_url} ...")
         t0 = time.time()
@@ -211,7 +211,7 @@ class Sandbox:
             try:
                 r = requests.get(self.status_url, timeout=self.http_timeout)
                 if r.status_code == 200:
-                    # bazı sürümlerde body boş olabilir; 200 ise yeterli say
+                    # some versions may return empty body; 200 is sufficient
                     print("[SANDBOX] API ready (/status).")
                     return
             except Exception as e:
@@ -246,7 +246,7 @@ class Sandbox:
     # -----------------------
     def screenshot(self) -> Image.Image:
         """
-        Beklenen format: {"success": true, "image_data": "<base64_png>"}
+        Expected format: {"success": true, "image_data": "<base64_png>"}
         """
         res = self._post_cmd("screenshot", {})
         if not (isinstance(res, dict) and res.get("success") is True and "image_data" in res):
@@ -258,7 +258,7 @@ class Sandbox:
 
     def get_screen_size(self) -> Tuple[int, int]:
         """
-        Kabul edilen formatlar:
+        Accepted formats:
         A) {"success": true, "size": {"width": 1395, "height": 1016}}
         B) {"success": true, "width": 1395, "height": 1016}
         """
