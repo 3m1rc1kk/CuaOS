@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="assets/logo/cuaos-logo.png" width="180" alt="CuaOS logo">
+</p>
+
+<h1 align="center">CuaOS</h1>
+<p align="center">Local-first desktop agent sandbox (Docker XFCE + VNC + local VLM)</p>
+
+
+
 # 🖥️ CUA — Computer Use Agent OS(With Local Sandbox)
 
 A locally-running AI agent that autonomously controls a virtual desktop inside a Docker container using the **Qwen3-VL** vision-language model. The user issues natural language commands; the agent analyzes live screenshots of the VM, plans multi-step actions, and executes mouse/keyboard inputs to accomplish the task — all running on your own hardware with no cloud APIs required.
