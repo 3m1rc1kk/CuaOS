@@ -1,4 +1,4 @@
-# 🖥️ CUA — Computer Use Agent (Local Sandbox)
+# 🖥️ CUA — Computer Use Agent OS(With Local Sandbox)
 
 A locally-running AI agent that autonomously controls a virtual desktop inside a Docker container using the **Qwen3-VL** vision-language model. The user issues natural language commands; the agent analyzes live screenshots of the VM, plans multi-step actions, and executes mouse/keyboard inputs to accomplish the task — all running on your own hardware with no cloud APIs required.
 
@@ -241,6 +241,24 @@ All parameters are in `src/config.py`:
 | `CUDA out of memory` | Reduce `N_GPU_LAYERS` in `src/config.py` |
 | `llama-cpp CUDA error` | Ensure you installed the wheel matching your CUDA version |
 | Slow model download | The first run downloads a ~5 GB GGUF model, be patient |
+
+
+## 🗺️ Roadmap
+
+> **Status Legend:** ✅ Done · 🔄 In Progress · ⬜ Not Started
+
+| # | Feature | Description | Est. Time | Status |
+|---|---------|-------------|-----------|--------|
+| 1| **Project Restructuring** | Reorganize files into `src/`, `assets/`, `img/` directories; update all import paths |         | ✅ Done |
+| 2 | **Mission Control UI** | Professional 5-panel PyQt6 interface with live VM view, command panel, inspector, and logs |         | ✅ Done|
+| 3 | **README & Documentation** | Comprehensive README with installation guide, configuration reference, and troubleshooting |        | ✅ Done |
+| 5 | **A model that plans detailed operations.** | An LLM (API with) that performs detailed planning on behalf of the user for more complex operations| 1-2 Week| 🔄 In Progress |
+| 4 | **Multi-Model Support** | Allow switching between different VLMs (Qwen3-VL, LLaVA, InternVL) via config or UI dropdown | unknown | ⬜ In Progress |
+| 5 | **Conversation Memory** | Persistent chat history so the agent remembers context across multiple commands in a session | unknown | ⬜ Not Started |
+| 6 | **Action Undo / Rollback** | Snapshot VM state before each action and allow rollback on failure | unknown | ⬜ Not Started |
+| 7 | **Multi-Monitor / Multi-VM** | Support controlling multiple Docker containers simultaneously from a single UI | unknown | ⬜ Not Started |
+| 8 | **Voice Command Input** | Accept voice commands via Whisper (local STT) instead of typing | unknown | ⬜ Not Started |
+| 9 | **Windows & macOS Support** | Cross-platform compatibility with native installers and platform-specific sandboxes | unknown | ⬜ Not Started |
 
 ## 📄 License
 
