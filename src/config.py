@@ -16,7 +16,7 @@ class CFG:
     # ----------------------
     PLANNER_PROVIDER: str = "openrouter"       # openrouter | openai | local
     PLANNER_API_KEY: str = ""                  # set via UI or env var
-    PLANNER_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
+    PLANNER_MODEL: str = ""
     PLANNER_MAX_TOKENS: int = 1024
     # Llama runtime
     N_CTX: int = 2048
