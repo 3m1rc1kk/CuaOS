@@ -18,6 +18,21 @@ class CFG:
     PLANNER_API_KEY: str = ""                  # set via UI or env var
     PLANNER_MODEL: str = ""
     PLANNER_MAX_TOKENS: int = 1024
+
+    # ----------------------
+    # Hierarchical Planning Mode
+    # ----------------------
+    USE_PLANNER: bool = True                  # Enable Plan→Execute→Verify loop
+
+    # Local GGUF planner (text-only model)
+    PLANNER_GGUF_REPO_ID: str = ""             # HF repo for planner GGUF
+    PLANNER_GGUF_MODEL_FILENAME: str = ""      # GGUF filename
+    PLANNER_GGUF_LOCAL_PATH: str = ""          # Direct path to local .gguf file
+    PLANNER_N_CTX: int = 4096                  # Planner context window
+    PLANNER_N_THREADS: int = 8                 # Planner CPU threads
+    PLANNER_N_GPU_LAYERS: int = -1             # -1 = auto (detect optimal), 0=CPU only
+    PLANNER_MAX_REPLAN: int = 2                # Max replan attempts per objective
+
     # Llama runtime
     N_CTX: int = 2048
     N_THREADS: int = 12

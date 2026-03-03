@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from src.config import cfg
 from src.sandbox import Sandbox
@@ -19,6 +19,23 @@ def trim_history(history, keep_last=6):
     return history[-keep_last:]
 
 
+def _create_planner():
+    """Create a planner instance based on config. Returns None if not configured."""
+    from src.planner import Planner
+
+    provider = cfg.PLANNER_PROVIDER.lower()
+
+    if provider == "local":
+        from src.planner_local import LocalGGUFPlanner
+        return LocalGGUFPlanner()
+    elif provider in ("openrouter", "openai"):
+        from src.planner_api import APIPlanner
+        return APIPlanner()
+    else:
+        print(f"[WARN] Unknown PLANNER_PROVIDER '{provider}', falling back to reactive mode.")
+        return None
+
+
 def main() -> None:
     sandbox = Sandbox(cfg)
     sandbox.start()
@@ -29,6 +46,19 @@ def main() -> None:
 
     llm = load_llm()
     print("[DEBUG] cfg.N_CTX =", cfg.N_CTX)
+
+    # ── Set up planner if enabled ─────────────────────────────
+    planner = None
+    if cfg.USE_PLANNER:
+        try:
+            planner = _create_planner()
+            if planner:
+                print("[PLANNER] Hierarchical planning mode ENABLED.")
+            else:
+                print("[PLANNER] Could not create planner. Falling back to reactive mode.")
+        except Exception as e:
+            print(f"[PLANNER] ERROR creating planner: {e}")
+            print("[PLANNER] Falling back to reactive mode.")
 
     print("Agent ready. Type 'exit' or 'quit' to quit.")
 
@@ -45,6 +75,20 @@ def main() -> None:
             print("Agent shutting down.")
             break
 
+        # ── Planning mode ─────────────────────────────────────
+        if planner is not None:
+            from src.agent_loop import run_agent_loop
+            result = run_agent_loop(
+                sandbox=sandbox,
+                llm=llm,
+                planner=planner,
+                objective=objective,
+            )
+            print(f"\n[AGENT] Final result: {result}")
+            print("Ready for the next command.")
+            continue
+
+        # ── Reactive mode (original behavior) ─────────────────
         history: List[Dict[str, Any]] = []
 
         step = 1

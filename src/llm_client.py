@@ -16,19 +16,44 @@ def load_llm() -> Llama:
     model_path = hf_hub_download(repo_id=cfg.GGUF_REPO_ID, filename=cfg.GGUF_MODEL_FILENAME)
     mmproj_path = hf_hub_download(repo_id=cfg.GGUF_REPO_ID, filename=cfg.GGUF_MMPROJ_FILENAME)
 
-    return Llama(
-        model_path=model_path,
-        chat_handler=Qwen3VLChatHandler(
-            clip_model_path=mmproj_path,
-            force_reasoning=cfg.FORCE_REASONING,
-            image_min_tokens=cfg.IMAGE_MIN_TOKENS,
-        ),
-        n_ctx=cfg.N_CTX,
-        n_batch=cfg.N_BATCH,
-        n_gpu_layers=cfg.N_GPU_LAYERS,
-        n_threads=cfg.N_THREADS,
-        verbose=False,
-    )
+    import os, subprocess
+    model_size_mb = os.path.getsize(model_path) / (1024 * 1024)
+    print(f"[LLM] Model file: {model_path} ({model_size_mb:.0f} MB)")
+    print(f"[LLM] GPU layers: {cfg.N_GPU_LAYERS}")
+
+    # Show VRAM status before loading
+    try:
+        r = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.total,memory.used,memory.free",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0:
+            print(f"[LLM] VRAM status: {r.stdout.strip()} (total,used,free MB)")
+    except Exception:
+        pass
+
+    try:
+        llm = Llama(
+            model_path=model_path,
+            chat_handler=Qwen3VLChatHandler(
+                clip_model_path=mmproj_path,
+                force_reasoning=cfg.FORCE_REASONING,
+                image_min_tokens=cfg.IMAGE_MIN_TOKENS,
+            ),
+            n_ctx=cfg.N_CTX,
+            n_batch=cfg.N_BATCH,
+            n_gpu_layers=cfg.N_GPU_LAYERS,
+            n_threads=cfg.N_THREADS,
+            verbose=False,
+        )
+        print("[LLM] ✓ Qwen3-VL loaded successfully.")
+        return llm
+    except Exception as e:
+        print(f"[LLM] ❌ Failed to load model: {e}")
+        print("[LLM] TIP: Try 'nvidia-smi' to check VRAM usage.")
+        print("[LLM] TIP: Kill stale GPU processes or reduce N_GPU_LAYERS in config.")
+        raise
 
 
 

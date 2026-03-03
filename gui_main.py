@@ -55,7 +55,7 @@ def _extract_xy(out: Dict[str, Any]) -> Tuple[float, float]:
     # Some models may return a "position" or bbox-like field
     pos = out.get("position", None)
     if pos is not None:
-        # [[x1,y1],[x2,y2]] veya [x1,y1,x2,y2] veya [x,y]
+        # [[x1,y1],[x2,y2]] or [x1,y1,x2,y2] or [x,y]
         if isinstance(pos, (list, tuple)):
             if len(pos) == 2 and all(isinstance(t, (int, float)) for t in pos):
                 return float(pos[0]), float(pos[1])
@@ -401,7 +401,7 @@ class AgentWindow(QMainWindow):
         vm_layout.addWidget(self.vm_view)
         main_layout.addWidget(self.vm_frame, stretch=10)
 
-        # --- Alt komut paneli ---
+        # --- Bottom command panel ---
         self.bottom = QFrame()
         self.bottom.setObjectName("bottomPanel")
         bottom_layout = QVBoxLayout(self.bottom)

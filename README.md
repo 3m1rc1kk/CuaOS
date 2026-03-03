@@ -32,9 +32,13 @@ Most "computer use" demos rely on cloud-hosted models (GPT-4V, Claude, etc.). Th
 
 - **Qwen3-VL 8B** vision-language model (GGUF, runs locally on GPU)
 - **Docker Sandbox** — isolated virtual desktop via `trycua/cua-xfce` container
-- **Mission Control UI** — professional 5-panel PyQt6 interface
+- **Hierarchical Planning** — local GGUF planner decomposes complex objectives into atomic steps, verified after execution
+- **Local Model File Browser** — browse and select local `.gguf` model files directly from the GUI, or download from HuggingFace
+- **Auto GPU Layer Detection** — automatically detects available VRAM and calculates optimal GPU offloading
+- **Mission Control UI** — professional 5-panel PyQt6 interface with planner settings panel
 - **Live VM Screen** — direct mouse/keyboard interaction with the VM
 - **Agent Trace** — step-by-step plan visualization, metrics, structured logs
+- **Plan Verification** — each plan step is verified against success criteria using the vision model
 - **Safety Guards** — repeat detection, coordinate validation, step limit
 - **Turkish → English Translation** — commands are auto-translated (optional)
 - **JSON Log Export** — export structured logs for debugging/analysis
@@ -154,19 +158,31 @@ pip install sentencepiece
 
 ## ▶️ Running
 
-### Mission Control UI (Recommended)
+### Mission Control — Local-First with Hierarchical Planner (Recommended)
+
+```bash
+conda activate cua
+python gui_mission_control_local.py
+```
+
+The **local-first** variant runs the entire pipeline on your hardware with a hierarchical planning system:
+- **Planner Settings Panel** — select local GGUF models via file browser, configure GPU layers (auto/manual), HuggingFace fallback
+- **Hierarchical Plans** — complex objectives are decomposed into verified atomic steps
+- **Auto GPU Detection** — optimal VRAM utilization calculated automatically
+- **Top Bar** — Docker/Model status, step counter, latency
+- **Left** — Command input, preset commands, agent step trace with plan visualization
+- **Center** — Live VM screen (mouse/keyboard active)
+- **Right** — Last action detail, metrics, sandbox info, config
+- **Bottom** — Structured logs with JSON export
+
+### Mission Control — Standard UI
 
 ```bash
 conda activate cua
 python gui_mission_control.py
 ```
 
-Opens a professional 5-panel interface:
-- **Top Bar** — Docker/Model status, step counter, latency
-- **Left** — Command input, preset commands, agent step trace
-- **Center** — Live VM screen (mouse/keyboard active)
-- **Right** — Last action detail, metrics, sandbox info, config
-- **Bottom** — Structured logs with JSON export
+Opens a professional 5-panel interface without the hierarchical planner.
 
 ### Classic UI
 
@@ -194,20 +210,28 @@ python main.py
 ## 📁 Project Structure
 
 ```
-CUA-system-running-locally-via-sandbox/
+CuaOS/
 │
-├── gui_mission_control.py       # Mission Control UI (recommended)
+├── gui_mission_control_local.py # Local-first Mission Control with hierarchical planner (recommended)
+├── gui_mission_control.py       # Standard Mission Control UI
+├── gui_mission_control_advance.py # Advanced Mission Control UI
 ├── gui_main.py                  # Classic UI
 ├── main.py                      # Terminal-only agent loop
 ├── setup.py                     # Package setup
 ├── requirements.txt             # Python dependencies
 ├── README.md
+├── SECURITY.md
 │
 ├── src/                         # Source modules
 │   ├── __init__.py
 │   ├── config.py                # All configuration parameters
 │   ├── sandbox.py               # Docker container REST API wrapper
-│   ├── llm_client.py            # Qwen3-VL model loading & inference
+│   ├── llm_client.py            # Qwen3-VL model loading & inference (with VRAM diagnostics)
+│   ├── planner.py               # Plan data models, ABC, system prompt
+│   ├── planner_local.py         # Local GGUF planner with auto GPU & text fallback parser
+│   ├── verifier.py              # Plan step verification using vision model
+│   ├── agent_loop.py            # Hierarchical agent loop (plan → execute → verify)
+│   ├── agent_runner_v2.py       # V2 agent runner
 │   ├── vision.py                # Screenshot capture, resize, preview
 │   ├── actions.py               # Action execution (click, type, scroll)
 │   ├── guards.py                # Safety checks (repeat guard, validation)
@@ -215,8 +239,12 @@ CUA-system-running-locally-via-sandbox/
 │   ├── design_system.py         # UI design tokens & stylesheet
 │   └── panels.py                # UI panel widgets
 │
+├── tests/                       # Unit tests
+│   ├── test_planner.py
+│   ├── test_verifier.py
+│   └── test_agent_loop.py
+│
 ├── assets/                      # Demo videos & media
-│   
 │
 └── img/                         # Runtime screenshots (auto-generated)
     └── (click previews, screen captures)
@@ -231,10 +259,13 @@ All parameters are in `src/config.py`:
 | `SANDBOX_IMAGE` | `trycua/cua-xfce:latest` | Docker image for the VM |
 | `API_PORT` | `8001` | Container API port (host side) |
 | `VNC_RESOLUTION` | `1920x1080` | VM screen resolution |
-| `N_GPU_LAYERS` | `-1` (all) | Number of model layers offloaded to GPU |
+| `N_GPU_LAYERS` | `-1` (all) | Executor model GPU layers (`-1` = all) |
 | `N_CTX` | `2048` | Model context length |
 | `MAX_STEPS` | `20` | Maximum steps per command |
 | `GGUF_REPO_ID` | `mradermacher/Qwen3-VL-8B...` | HuggingFace model repository |
+| `PLANNER_GGUF_LOCAL_PATH` | `""` | Direct path to a local `.gguf` planner model |
+| `PLANNER_N_GPU_LAYERS` | `-1` (auto) | Planner GPU layers (`-1` = auto-detect based on VRAM) |
+| `PLANNER_PROVIDER` | `local` | Planner backend (`local` GGUF or `api`) |
 
 ## 🐛 Troubleshooting
 
@@ -252,18 +283,21 @@ All parameters are in `src/config.py`:
 
 > **Status Legend:** ✅ Done · 🔄 In Progress · ⬜ Not Started
 
-| # | Feature | Description | Est. Time | Status |
-|---|---------|-------------|-----------|--------|
-| 1| **Project Restructuring** | Reorganize files into `src/`, `assets/`, `img/` directories; update all import paths |         |    ✅ |
-| 2 | **Mission Control UI** | Professional 5-panel PyQt6 interface with live VM view, command panel, inspector, and logs |         |   ✅ |
-| 3 | **README & Documentation** | Comprehensive README with installation guide, configuration reference, and troubleshooting |        |   ✅ |
-| 5 | **A model that plans detailed operations.** | An LLM (API with) that performs detailed planning on behalf of the user for more complex operations| 1-2 Week|   🔄 |
-| 4 | **Multi-Model Support** | Allow switching between different VLMs (Qwen3-VL, LLaVA, InternVL) via config or UI dropdown | unknown |    ⬜ |
-| 5 | **Conversation Memory** | Persistent chat history so the agent remembers context across multiple commands in a session | unknown |    ⬜ |
-| 6 | **Action Undo / Rollback** | Snapshot VM state before each action and allow rollback on failure | unknown |    ⬜ |
-| 7 | **Multi-Monitor / Multi-VM** | Support controlling multiple Docker containers simultaneously from a single UI | unknown |    ⬜|
-| 8 | **Voice Command Input** | Accept voice commands via Whisper (local STT) instead of typing | unknown |    ⬜ |
-| 9 | **Windows & macOS Support** | Cross-platform compatibility with native installers and platform-specific sandboxes | unknown |    ⬜ |
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| 1 | **Project Restructuring** | Reorganize files into `src/`, `assets/`, `img/` directories; update all import paths | ✅ |
+| 2 | **Mission Control UI** | Professional 5-panel PyQt6 interface with live VM view, command panel, inspector, and logs | ✅ |
+| 3 | **README & Documentation** | Comprehensive README with installation guide, configuration reference, and troubleshooting | ✅ |
+| 4 | **Hierarchical Planner** | Local GGUF planner decomposes complex objectives into atomic steps with verification | ✅ |
+| 5 | **Local Model File Browser** | GUI file picker for selecting local `.gguf` models with HuggingFace fallback | ✅ |
+| 6 | **Auto GPU Layer Detection** | Automatically detect VRAM and calculate optimal GPU offloading for planner model | ✅ |
+| 7 | **Plan Verification** | Each plan step is verified against success criteria using the vision model | ✅ |
+| 8 | **Multi-Model Support** | Allow switching between different VLMs (Qwen3-VL, LLaVA, InternVL) via config or UI dropdown | ⬜ |
+| 9 | **Conversation Memory** | Persistent chat history so the agent remembers context across multiple commands in a session | ⬜ |
+| 10 | **Action Undo / Rollback** | Snapshot VM state before each action and allow rollback on failure | ⬜ |
+| 11 | **Multi-Monitor / Multi-VM** | Support controlling multiple Docker containers simultaneously from a single UI | ⬜ |
+| 12 | **Voice Command Input** | Accept voice commands via Whisper (local STT) instead of typing | ⬜ |
+| 13 | **Windows & macOS Support** | Cross-platform compatibility with native installers and platform-specific sandboxes | ⬜ |
 
 ## 📄 License
 
