@@ -37,6 +37,10 @@ User Objective
     → All steps done → Objective complete
 ```
 
+### 🏗️ System Architecture
+
+![System Architecture](./assets/system_architecture.png)
+
 ## ✨ Features
 
 - **Qwen3-VL 8B** vision-language model (GGUF, runs locally on GPU)
